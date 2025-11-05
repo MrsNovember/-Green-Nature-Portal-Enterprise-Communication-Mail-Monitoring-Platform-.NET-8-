@@ -1,198 +1,252 @@
-# 🏨 Green Nature Portal — Enterprise Communication & Mail Monitoring Platform (.NET 8)
+🏨 Green Nature Portal
 
-**Production Specification & Emergend AI Generation Prompt**
-**Version:** 1.0 (2025‑11‑04)
-**Owner:** Green Nature Hotels (IT & Digital Transformation)
+Enterprise Communication & Mail Monitoring Platform (ASP.NET Core 8 + React 18)
 
----
+Production-ready, hotel-aware portal for email monitoring with SLA, AD/LDAP sync, real-time dashboards, chat & file sharing, auditing, and KVKK/GDPR compliance—built as a modular, scalable monorepo.
 
-## A. Executive Overview
+✨ Highlights
 
-**Goal:** Tek bir kurumsal portal altında aşağıdaki ihtiyaçların tamamını, **ASP.NET Core 8** tabanlı, modüler ve ölçeklenebilir bir mimariyle sunmak:
+End-to-end mail lifecycle (Exchange Online/On-Prem): ingest → normalize → SLA/routing → reply tracking → exports
 
-* **E‑posta izleme ve SLA yönetimi** (Exchange Online/On‑Prem)
-* **AD/LDAP senkronizasyonu** ve rol‑tabanlı yetkilendirme
-* **Gerçek zamanlı portal**: dashboard’lar, duyurular, iç sohbet ve dosya paylaşımı (otel/birim bazlı), çapraz birim mesajlaşmada **tek seferlik onay**
-* **Arama, raporlama, PDF/XLSX export**
-* **KVKK/GDPR uyumlu denetim ve veri yaşam döngüsü**
+Hotel isolation by design: tenant filters, policy-based authorization, and query filters enforced across the stack
 
-Tüm bileşenler **on‑prem** veya GN altyapısında; **harici veri kalıcı depolama yok.**
+Realtime experience with SignalR: live dashboards, inbox updates, chat presence/typing/read receipts
 
----
+Compliance first: immutable audit hash-chain, SIEM NDJSON export, retention per hotel, KVKK/GDPR tooling
 
-## B. Technology Stack (Final)
+Modern frontend: React 18 + Vite + Tailwind, full TR/EN i18n, PWA (offline read-only) and Web Push
 
-* **Backend:** **ASP.NET Core 8** (Minimal API + Clean Architecture)
-* **Realtime:** **SignalR** (WebSockets)
-* **Background Jobs:** **Hangfire** (Redis veya PostgreSQL storage)
-* **Database:** **PostgreSQL 16** (önerilen) veya SQL Server 2019+
-* **Cache/Bus:** **Redis**
-* **Directory:** **LDAP (on‑prem AD)** + **Microsoft Graph (Azure AD/Exchange Online)**
-* **On‑Prem Exchange:** **EWS** (fallback)
-* **Frontend:** **React 18 + Vite + TypeScript + TailwindCSS** (PWA + i18n)
-* **Arama:** Meilisearch (opsiyonel) / PostgreSQL FT
-* **PDF/XLSX:** **QuestPDF** + **ClosedXML**
-* **Security:** ASP.NET Identity + Policy‑based Authorization; 2FA (TOTP/U2F)
-* **Observability:** Serilog + OpenTelemetry (opsiyonel) + HealthChecks UI
-* **AV:** ClamAV socket taraması (dosya yüklemeleri)
+Ops ready: Health endpoints, Hangfire Dashboard, OpenTelemetry hooks, systemd + Nginx reference, Docker option
 
-> **Neden PostgreSQL?** JSONB, FT arama, parti̇syon, güçlü indeks türleri; EF Core ekosistemi olgun.
+Quality gates: xUnit (+FluentAssertions), Integration Tests, Playwright E2E, CI coverage gate ≥ 70%
 
----
+🧭 Table of Contents
 
-## C. Bounded Contexts & Services
+Architecture
 
-1. **Directory & Identity** – AD bind, OU eşleştirme, kullanıcı ilk kaydı/sync, leave & replacement.
-2. **Mail Ingest & Normalize** – Graph/Webhook + EWS/IMAP fallback, inline sanitization, thread/message oluşturma.
-3. **SLA & Routing Engine** – iş saatleri/holiday, T‑15 risk, breach, çok kademeli eskalasyon.
-4. **Inbox & Workflow** – durumlar, etiketler, notlar, ekler, güvenli HTML.
-5. **Announcements & Recognition** – otel/global, kitle hedefleme, okundu, “Ayın Personeli”.
-6. **Chat & File Share** – otel/birim içi sohbet, dosya gönderimi, **çapraz birim tek seferlik onay**, kalıcı kayıt.
-7. **Search & Discovery** – konu/gövde/gönderen/etiket fuzzy; operatörler.
-8. **Exports & Templates** – PDF/XLSX rapor ve özelleştirilebilir export builder.
-9. **Theme & Branding** – otel başına renk/logo; karanlık mod.
-10. **Audit & Compliance** – immutable hash‑zincir, SIEM export (NDJSON), KVKK/GDPR araçları.
-11. **Health & Ops** – health endpoints, Hangfire Dashboard, SignalR ve entegrasyon gecikmeleri.
+Bounded Contexts
 
----
+Data Model (ER Overview)
 
-## D. Role Model & Access
+Role Model & Scoping
 
-| Rol                | Kapsam       | Yetkiler                                                                   |
-| ------------------ | ------------ | -------------------------------------------------------------------------- |
-| **SuperAdmin**     | Global       | Tüm sistem, markalama, retention, audit, entegrasyon anahtarları           |
-| **Admin**          | Global       | Oteller, kullanıcılar, duyurular, SLA/routing (güvenlik anahtarları hariç) |
-| **Manager/Müdür**  | Hotel‑Scoped | Kendi oteli/otelleri, birimler, raporlar, duyurular, chat moderasyonu      |
-| **Staff/Personel** | Individual   | Kendi gelen kutusu, otel/birim içi sohbet, dosya paylaşımı                 |
+Features
 
-**Otel izolasyonu**: global policy + tenant filter (HotelId) + EF Core Query Filters; **negatif test** senaryoları zorunlu.
+Frontend (UI/UX)
 
----
+Security & Compliance
 
-## E. Data Model (ER Özeti)
+Health & Observability
 
-**Ortak alanlar**: `CreatedBy, UpdatedBy, HotelId, DeptId, TenantBoundary`, `RowVersion` (concurrency), `SoftDelete` (opsiyonel)
+Project Structure
 
-**Kimlik & Organizasyon**
+Quick Start
 
-* `Hotels(Id, Code, Name, Timezone, BrandJson, BusinessHoursJson, HolidayRulesJson)`
-* `Departments(Id, HotelId, Name, Code)`
-* `Users(Id, Email, SamAccountName, DisplayName, Locale, Timezone, Role, HotelIds jsonb, DeptId, TwoFAEnabled)` (çok‑otelli destek `UserHotels` pivot)
-* `Leaves(Id, UserId, StartAt, EndAt, ReplacementUserId, Reason)`
+Configuration
 
-**Posta**
+Deployment (Linux + Nginx + systemd)
 
-* `Mailboxes(Id, HotelId, Address, Provider, MetaJson, Active)`
-* `Threads(Id, HotelId, MailboxId, Subject, CustomerAddress, Status, FirstReceivedAt, LastActivityAt, FrtSeconds, LastReplyUserId)`
-* `Messages(Id, ThreadId, Direction, Sender, RecipientsJson, CcJson, BccJson, HtmlSanitized, Text, ReceivedAt, SentAt, MessageId, InReplyTo)`
-* `Tags(Id, HotelId, Name, Color, SystemTag)` + `ThreadTags(ThreadId, TagId)` + `MessageTags(MessageId, TagId)`
-* `SLAPolicies(Id, HotelId, Name, BusinessHoursJson, ThresholdMinutes, EscalationJson, PauseOnPending)`
-* `RoutingRules(Id, HotelId, RuleJson, Priority)`
+Docker (optional)
 
-**Duyuru**
+Seeds & Demo Data
 
-* `Announcements(Id, HotelId NULL, CreatedByUserId, Title, MessageHtml, Priority, Scope, StartAt, EndAt, AudienceJson, Delivery, LocaleJson)`
-* `AnnouncementReads(Id, AnnouncementId, UserId, ReadAt)`
+Testing & Quality
 
-**Chat & Dosya**
+API Surface (selected)
 
-* `ChatRooms(Id, HotelId, DeptId NULL, Type ENUM('dept','dm','cross'))`
-* `ChatMemberships(Id, RoomId, UserId, Role ENUM('owner','member'), Muted)`
-* `ChatMessages(Id, RoomId, UserId, BodyText, HtmlSanitized, AttachJson, CreatedAt, EditedAt)`
-* `FileBlobs(Id, Sha256, Size, Mime, StoragePath, CreatedBy)`
-* `FileShares(Id, BlobId, RoomId NULL, SenderId, ReceiverId NULL, HotelId, DeptId NULL, CreatedAt)`
-* `CrossDeptApprovals(Id, RequestorId, TargetDeptId, TargetUserId NULL, Purpose, Status ENUM('pending','approved','rejected'), Token, ExpiresAt, CreatedAt)`
+Roadmap
 
-**Arama**
+Troubleshooting
 
-* `SearchIndex(Id, HotelId, ThreadId NULL, MessageId NULL, Subject, BodyText, Sender, TagsText, Ts)`
+License
 
-**Denetim**
+🏗 Architecture
 
-* `Audits(Id, ActorUserId, HotelId NULL, Action, TargetType, TargetId, PayloadJson, CreatedAt, Hash, PrevHash)`
+Stack
 
-**Export**
+Backend: ASP.NET Core 8 (Minimal API + Clean Architecture), EF Core 8, PostgreSQL 16 (recommended)
 
-* `ExportTemplates(Id, HotelId, Name, DefinitionJson, VisibilityJson, CreatedByUserId)`
+Realtime: SignalR (WebSockets) + Redis backplane
 
-**AI Taslak**
+Jobs: Hangfire (Redis or PostgreSQL storage)
 
-* `AIDraftLogs(Id, UserId, ThreadId, PromptHash, Provider, Tokens, LatencyMs, CreatedAt)`
+Search: PostgreSQL Full-Text (default) or Meilisearch (optional)
 
-**İndeksler**: Threads(HotelId, Status, FirstReceivedAt, LastActivityAt), Messages(ThreadId, ReceivedAt), ChatMessages(RoomId, CreatedAt DESC), FileBlobs(Sha256 unique), Audits(CreatedAt), Search fulltext.
+Frontend: React 18 + Vite + TypeScript + TailwindCSS, i18n (TR/EN), Workbox PWA + Web Push (VAPID)
 
----
+Security: ASP.NET Identity, 2FA (TOTP/U2F), policy-based auth
 
-## F. İş Kuralları (Kanoni̇k Akışlar)
+Files/AV: ClamAV socket scan for all uploads
 
-**Posta yaşam döngüsü**: `new → assigned → pending → responded → closed`
+PDF/XLSX: QuestPDF + ClosedXML
 
-* Okundu ama yanıt yok → `unanswered`
-* `pending` → SLA zamanlayıcıları **pause**
-* İlk yanıt → `responded` + FRT hesapla
-* T‑15 dk → `sla-at-risk` uyarısı
-* Süre aşımı → `sla-breached` + eskalasyon (e‑posta/push/chat mention)
+Observability: Serilog + (optional) OpenTelemetry + HealthChecks UI
 
-**Yönlendirme DSL**: gönderen domain, konu regex, departman, vardiya, leave, VIP listesi, yük dağılımı, geçmiş
+Why PostgreSQL?
+First-class JSONB, powerful indexing, partitions, robust FT search, mature EF Core provider.
 
-**Chat/Dosya**
+🧱 Bounded Contexts
 
-* **Birim içi** odalar otomatik; herkes üye.
-* **DM** izinli (otel içi sınır); audit log zorunlu.
-* **Çapraz birim**: ilk mesaj/transferde **tek seferlik onay**:
+Directory & Identity – AD bind, OU mapping, initial user onboarding, leave & replacement logic
 
-  * `CrossDeptApprovals` kaydı → hedef departman onaylar veya hedef kullanıcı tekil onay verir.
-  * Süresi dolan tokenlar otomatik iptal (Hangfire job).
-* **Dosya**: veritabanında yalnızca meta; **blob** disk/NAS üzerinde, **ClamAV taraması** sonrası erişime açılır. Sha256 ile deduplikasyon; erişim log’ları audit’e yazılır.
+Mail Ingest & Normalize – Graph subscriptions/webhooks (+ EWS/IMAP fallback), HTML sanitize, thread/message creation
 
----
+SLA & Routing Engine – business hours/holiday aware; T-15 at-risk, breach, multi-tier escalation
 
-## G. Frontend (React + Vite + TS)
+Inbox & Workflow – statuses, tags, internal notes, secure HTML viewer, attachments
 
-* **Layout:** otel teması (primary/accent/logo), karanlık mod
-* **Sayfalar:** Login, Dashboard(otel/global), Inbox, Chat, Duyurular, Arama, Export Builder, Ayarlar (Genel/Oteller/Mail Bağlantıları/Routing&SLA/Directory/Security/Notifications/Data Retention/Theme/Şablonlar), Health
-* **Chat UI:** WhatsApp benzeri, mention’lar, dosya sürük‑bırak, okundu/teslim durumları, arşiv, sabitleme, sessize alma
-* **Arama:** `hotel:`, `dept:`, `user:`, `tag:` operatörleri + tarih filtresi
-* **PWA:** offline okuma (Inbox, Duyuru, Chat read‑only), push bildirim
+Announcements & Recognition – hotel/global scoping, audiences, schedule windows, read receipts, “Employee of the Month”
 
----
+Chat & File Share – dept rooms, DMs (hotel-internal), cross-department one-time approval, durable history
 
-## H. Security & Compliance
+Search & Discovery – fuzzy search on subject/body/sender/tags; operators and time filters
 
-* **ASP.NET Identity** + 2FA (TOTP/U2F), cihaz/oturum sınırları
-* **Policy‑based Authorization** + otel sınırı query filters
-* **HTML sanitize:** Ganss.XSS safelist; CID görseller kontrollü
-* **ClamAV**: yüklemelerde zorunlu tarama; karantinaya alma
-* **Audit chain:** her kritik aksiyon hash’li; günlük “anchor digest” e‑posta + SIEM NDJSON export
-* **KVKK/GDPR:** veri saklama politikaları (otel bazlı), export/delete araçları
+Exports & Templates – drag-and-drop export builder to PDF/XLSX; saved templates per role/hotel
 
----
+Theme & Branding – per-hotel color/logo tokens, dark mode; theme editor
 
-## I. Health & Telemetry
+Audit & Compliance – immutable hash-chain, SIEM NDJSON export, retention tools
 
-* **Health endpoints:** `/health/app`, `/health/queue`, `/health/websockets`, `/health/integrations`
-* **Hangfire Dashboard:** sadece Admin/SuperAdmin (otel sınırı read‑only görünüm Manager’a)
-* **SignalR** uptime ve Exchange/Graph gecikme metrikleri
-* **Günlük PDF:** “Hotel IT Health Report” (Admin’e)
-* **Sabah Bildirimi:** Daily Brief push (hacim, cevap süreleri, riskli kuyruklar)
+Health & Ops – health endpoints, Hangfire Dashboard, SignalR/Exchange latency metrics
 
----
+🗃 Data Model (ER Overview)
 
-## J. Project Structure
+Common fields across entities: CreatedBy, UpdatedBy, HotelId, DeptId, TenantBoundary, RowVersion (concurrency), SoftDelete (optional)
 
-```
-/green-nature-portal
+Identity & Organization
+
+Hotels, Departments, Users (+ UserHotels pivot for multi-hotel support), Leaves (with ReplacementUserId)
+
+Mail
+
+Mailboxes, Threads, Messages (+ Attachments), Tags (+ ThreadTags, MessageTags), SLAPolicies, RoutingRules
+
+Announcements
+
+Announcements, AnnouncementReads
+
+Chat & Files
+
+ChatRooms (dept/dm/cross), ChatMemberships, ChatMessages
+
+FileBlobs (SHA-256 dedupe), FileShares
+
+CrossDeptApprovals (status: pending/approved/rejected, token + expiry)
+
+Search
+
+SearchIndex (subject/body/sender/tags, ts vector)
+
+Audit
+
+Audits (immutable: Hash, PrevHash)
+
+Exports
+
+ExportTemplates
+
+AI Drafts
+
+AIDraftLogs (provider usage & latency logs)
+
+Indexes on all hot paths (threads/messages/chat/audit/search); designed for multi-hotel filtering and SLA reporting.
+
+🔐 Role Model & Scoping
+Role	Scope	Capabilities
+SuperAdmin	Global	All system settings, branding, retention, audit, integration keys
+Admin	Global	Hotels, users, announcements, SLA/routing (sans root secrets)
+Manager	Hotel-Scoped	Their hotel(s), departments, reports, announcements, chat moderation
+Staff	Individual	Personal inbox, hotel/department chat, file share
+
+Hotel isolation is enforced via global policy + tenant filter (HotelId) + EF Core query filters. Negative tests ensure no cross-hotel leakage.
+
+✅ Features
+Mail Lifecycle & SLA
+
+Statuses: new → assigned → pending → responded → closed
+
+Auto-tags: waiting-action, resolved, unanswered, sla-at-risk, sla-breached
+
+FRT: First Response Time captured on initial reply
+
+Timers: pause on pending, T-15 warnings, breach → escalation (email/push/chat mention)
+
+Routing DSL: sender domain, subject regex, department, shift, leave, VIP lists, load balancing, historical signals
+
+Chat & File Share
+
+Department rooms auto-provisioned; DMs permitted within hotel; everything logged
+
+Cross-department requires one-time approval (token with expiry via Hangfire)
+
+File uploads scanned via ClamAV; metadata in DB, blobs on disk/NAS; SHA-256 dedupe; access fully audited
+
+Announcements
+
+Hotel/global scope, audience targeting (hotel/department/users), schedule windows, priorities (info/important/critical)
+
+Delivery: dashboard/push/email; read receipts; recognition cards
+
+Search & Exports
+
+Operators: hotel:, dept:, user:, tag: + date filters; fuzzy highlight
+
+Export Builder → PDF/XLSX with saved templates per role/hotel
+
+Theming
+
+Per-hotel primary/accent/logo tokens; dark mode; theme editor feeds web build
+
+🖥 Frontend (UI/UX)
+
+Pages: Login, Global/Hotel Dashboards, Inbox, Chat, Announcements, Search, Export Builder, Settings (General/Hotels/Mail Connectors/Routing & SLA/Directory/Security/Notifications/Data Retention/Theme/Templates), Health
+
+Components: SLA chips, Tag selector, Thread list, Sanitized message viewer, Announcement banners/cards, Chat composer, File uploader (ClamAV status), Export builder, Theme editor, Charts
+
+PWA: installable; offline read-only for Inbox/Announcements/Chat history; Web Push for mentions/SLA risks/announcements
+
+i18n: full English and Turkish coverage (including PDFs)
+
+🛡 Security & Compliance
+
+ASP.NET Identity + 2FA (TOTP/U2F), device/session limits
+
+Policy-based authorization + hotel-level query filters
+
+HTML sanitize with Ganss.XSS (CID images allowed via allowlist)
+
+ClamAV is mandatory for uploads; quarantining on failure
+
+Audit chain: every critical action hashed; daily anchor digest + SIEM NDJSON export
+
+KVKK/GDPR: per-hotel retention policies; export/delete tools
+
+📈 Health & Observability
+
+Health endpoints:
+GET /health/app, /health/queue, /health/websockets, /health/integrations
+
+Hangfire Dashboard (Admin/SuperAdmin); Manager gets read-only hotel-scoped view
+
+SignalR uptime + Graph/Exchange ingest latency metrics
+
+Daily PDF to admins: “Hotel IT Health Report”
+
+Optional OpenTelemetry tracing; Serilog sinks (console/file/Seq)
+
+🗂 Project Structure
+green-nature-portal/
 ├─ src/
-│  ├─ Api/                  # ASP.NET Core 8 Minimal API
-│  ├─ Application/          # CQRS, Validators, Policies
-│  ├─ Domain/               # Entities, ValueObjects, DomainEvents
-│  ├─ Infrastructure/       # EF Core, Repositories, Graph/EWS/LDAP, Hangfire, Redis, Serilog, ClamAV
-│  └─ Realtime/             # SignalR hubs, presence, chat
-├─ web/                     # React 18 + Vite + TS + Tailwind + i18n + Workbox
+│  ├─ Api/                # ASP.NET Core 8 Minimal API
+│  ├─ Application/        # CQRS, validators, policies
+│  ├─ Domain/             # Entities, value objects, domain events
+│  ├─ Infrastructure/     # EF Core, Repos, Graph/EWS/LDAP, Hangfire, Redis, Serilog, ClamAV
+│  └─ Realtime/           # SignalR hubs: dashboards, inbox, chat, announcements
+├─ web/                   # React 18 + Vite + TS + Tailwind + i18n + Workbox
 ├─ deploy/
 │  ├─ nginx.conf
-│  ├─ portal.service        # systemd
-│  └─ docker-compose.yml    # opsiyonel
+│  ├─ portal.service      # systemd unit
+│  └─ docker-compose.yml  # optional
 ├─ scripts/
 │  ├─ setup.sh
 │  ├─ migrate-seed.sh
@@ -201,13 +255,38 @@ Tüm bileşenler **on‑prem** veya GN altyapısında; **harici veri kalıcı de
    ├─ Unit (xUnit)
    ├─ Integration
    └─ E2E (Playwright)
-```
 
----
+🚀 Quick Start
+Prerequisites
 
-## K. appsettings.json (örnek)
+Ubuntu 22.04+, .NET 8 SDK, Node 18+, PNPM/Yarn or npm, PostgreSQL 16, Redis, ClamAV
 
-```json
+(Optional) Meilisearch, OpenTelemetry Collector, Seq
+
+Build & Run (Dev)
+# Backend
+cd src/Api
+dotnet build
+dotnet run
+
+# Frontend
+cd ../../web
+npm install
+npm run dev
+
+Run Tests
+# Unit + Integration with coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# E2E (headless)
+cd tests/E2E
+npx playwright install --with-deps
+npx playwright test
+
+⚙ Configuration
+
+appsettings.json (excerpt):
+
 {
   "App": {
     "Name": "Green Nature Portal",
@@ -236,18 +315,19 @@ Tüm bileşenler **on‑prem** veya GN altyapısında; **harici veri kalıcı de
   "WebPush": { "VapidPublicKey": "", "VapidPrivateKey": "", "Subject": "mailto:it@greennaturehotels.com" },
   "ClamAV": { "SocketPath": "/var/run/clamav/clamd.ctl" },
   "Brand": {
-    "Diamond": { "Primary": "#009879", "Accent": "#E4C44A", "Logo": "diamond-logo.png" },
-    "Resort":  { "Primary": "#006B3F", "Accent": "#D6B36A", "Logo": "resort-logo.png" },
+    "Diamond":   { "Primary": "#009879", "Accent": "#E4C44A", "Logo": "diamond-logo.png" },
+    "Resort":    { "Primary": "#006B3F", "Accent": "#D6B36A", "Logo": "resort-logo.png" },
     "Sarigerme": { "Primary": "#00A79D", "Accent": "#F7786B", "Logo": "sarigerme-logo.png" }
   }
 }
-```
 
----
 
-## L. Nginx Reverse Proxy (örnek)
+Secrets to fill: Graph (TenantId/ClientId/ClientSecret), EWS creds, LDAP bind user/password, Web Push VAPID keys.
 
-```nginx
+📦 Deployment (Linux + Nginx + systemd)
+
+Nginx (TLS + HTTP/2 + WebSockets proxy)
+
 server {
   listen 443 ssl http2;
   server_name portal.greennaturehotels.com;
@@ -265,11 +345,10 @@ server {
     proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
   }
 }
-```
 
-**systemd** (`deploy/portal.service`):
 
-```ini
+systemd
+
 [Unit]
 Description=Green Nature Portal
 After=network.target
@@ -283,130 +362,118 @@ User=www-data
 
 [Install]
 WantedBy=multi-user.target
-```
 
----
 
-## M. Hangfire Jobs & SignalR Kanalları
+If you encounter 404/SSL/aaPanel reverse-proxy quirks, use the included deployment fix script and re-load Nginx.
 
-**Queues:** `critical` (escalations), `high` (webhooks), `default` (routing), `low` (exports/ai)
-**Jobs:** `IngestGraphWebhook`, `ParseEml`, `ApplyRoutingRules`, `ComputeSLA`, `Escalate`, `SendPush`, `GenerateAIDraft`, `BuildExport`, `DailyHealthReport`, `ExpireCrossDeptTokens`
-**Hubs:** `hotel:{id}:dashboard`, `hotel:{id}:sla`, `user:{id}:inbox`, `dept:{id}:chat`, `dm:{id}`, `announcements:{scope}`
+🐳 Docker (optional)
 
----
+An optional deploy/docker-compose.yml can spin up: API, Web, PostgreSQL, Redis, ClamAV, Meilisearch.
+Adjust volumes and environment variables, then:
 
-## N. Testing & Quality Gates
+docker compose up -d --build
 
-* **xUnit + FluentAssertions**, **EFCore.InMemory** / Testcontainers
-* **Playwright E2E**: inbox akışları, chat/dosya, çapraz birim onay, PWA push
-* **Analyzers:** StyleCop/IDisposable analizleri; **SonarQube** opsiyonel
-* **Security tests:** XSS sanitization, dosya tarama negatif vakaları, policy bypass testleri
+🌱 Seeds & Demo Data
 
----
+Run:
 
-## O. Seeds & Demo Data
+scripts/setup.sh
+scripts/migrate-seed.sh
 
-* 3 otel, 15 birim, 30 kullanıcı, 9 posta kutusu
-* Temsili threads/messages, duyurular, chat odaları, çapraz birim onay senaryosu
 
----
+What you get:
 
-## P. UX & Estetik
+3 hotels (Diamond, Resort, Sarigerme) with branding tokens
 
-* **Login:** döngüsel otel logolu video arka plan
-* **Dashboard:** “Think Green – Save Paper” widget
-* **Chat:** sabitleme, yıldızlı mesaj, reply‑thread, mention, hızlı tepki emojileri (kurumsal set)
-* **Dosya:** preview (PDF/Image), sürümleme (opsiyonel), 2GB tek dosya sınırı (konfigürasyon)
+15 departments, 30 users, 9 mailboxes
 
----
+Sample threads/messages, announcements, department chats, cross-dept approval scenario
 
-## Q. Implementation Roadmap
+Saved export templates
 
-1. **Scaffold & Identity/AD sync**
-2. **Graph/EWS ingest**
-3. **Inbox & SLA Engine**
-4. **Announcements**
-5. **Chat & File Share (+ cross‑dept approval)**
-6. **Dashboards & Search**
-7. **Exports & Templates**
-8. **PWA & Push**
-9. **Ops & Health**
+🧪 Testing & Quality
 
-Her aşama: testler + dokümantasyon + seed güncellemesi.
+Unit Tests: hotel scoping, routing/SLA math, leave/replacement, auto-tags, audit hashing, cross-dept approvals, file scan flows
 
----
+Integration: health endpoints, Redis/Hangfire/DB connectivity, controller workflows
 
-## R. Emergend AI — **Generation Prompt** (paste as‑is)
+E2E (Playwright): inbox flow, chat/file share, announcements, PWA install/push
 
-```
-You are Emergend AI. Generate a **production‑ready** monorepo named `green-nature-portal` implementing the following .NET 8 system.
+Static Analysis: StyleCop; optional SonarQube
 
-1) Stack & Structure:
-- Backend: ASP.NET Core 8 (Minimal API + Clean Architecture). EF Core 8 with PostgreSQL. Redis for cache and SignalR backplane. Background jobs with Hangfire.
-- Realtime: SignalR hubs (hotel/manager dashboards, inbox updates, chat rooms, announcements).
-- Frontend: React 18 + Vite + TypeScript + Tailwind, i18n (TR/EN), PWA with Workbox and Web Push (VAPID).
-- Security: ASP.NET Identity + 2FA (TOTP/U2F), policy-based authorization, hotel-level tenant filters.
-- AV: ClamAV socket scan for all uploads. HTML sanitization with Ganss.XSS.
-- PDF/XLSX: QuestPDF + ClosedXML. Logging: Serilog. HealthChecks endpoints.
-- Observability: optional OpenTelemetry wiring. Meilisearch optional via adapter.
+Coverage Gate: CI enforces combined coverage ≥ 70%
 
-2) Bounded Contexts (folders under src/): Directory, Mail, SLA, Inbox, Announcements, Chat, Search, Exports, Theme, Audit, Health. Include Domain/Application/Infrastructure layers and Api + Realtime.
+Typical commands:
 
-3) Data model & migrations (PostgreSQL):
-- Hotels, Departments, UserHotels (pivot), Users (extend Identity) with Locale/Timezone/Role/DeptId and HotelIds jsonb.
-- Mailboxes, Threads, Messages, MessageAttachments.
-- Tags + ThreadTags + MessageTags.
-- SLAPolicies, RoutingRules.
-- Leaves, Replacements.
-- Announcements, AnnouncementReads.
-- ChatRooms (dept/dm/cross), ChatMemberships, ChatMessages, FileBlobs (Sha256 dedupe), FileShares, CrossDeptApprovals.
-- SearchIndex table (or Meilisearch config).
-- Audits with immutable hash chain (Hash, PrevHash). ExportTemplates. AIDraftLogs.
+dotnet test --collect:"XPlat Code Coverage"
+npx playwright test
 
-4) Features:
-- AD sync (LDAP bind + OU mapping) & identity match (email → name → sAMAccountName). Manual review queue.
-- Exchange Online via Graph (subscriptions/webhooks + delta) and on‑prem EWS fallback; IMAP fallback optional.
-- Normalize HTML, sanitize, store threads/messages; attachment scan with ClamAV; CID inline policy.
-- SLA engine with pause on `pending`, T‑15 risk event, breach + escalation tiers; per‑hotel business hours/holidays.
-- Inbox UI: statuses (new/assigned/pending/responded/closed), system tags (waiting‑action/resolved/unanswered/sla‑at‑risk/sla‑breached), internal notes, attachment preview.
-- Dashboards: SuperAdmin global KPIs and Manager hotel KPIs; 60s cached; SignalR pushed updates.
-- Announcements: hotel/global scope, audience targeting (hotel/department/users), schedule windows, priority (info/important/critical), delivery (dashboard/push/email/all), read receipts; Employee of the Month cards.
-- Chat & File Share: dept rooms auto-provisioned; DMs within hotel; cross‑dept requires one‑time approval token; all messages and file shares permanently stored; presence, typing, read receipts.
-- Search: operators hotel:/dept:/user:/tag:, fuzzy highlight; default PostgreSQL FT; optional Meilisearch adapter.
-- Exports: drag‑and‑drop export builder to PDF/XLSX; saved templates per role.
-- Theme: per‑hotel color/logo tokens, dark mode. Theme editor updates config used by web build.
-- AI Drafts: polite EN/TR reply suggestions for email context; pluggable provider adapter; usage logs.
-- Health: /health/app, /health/queue, /health/websockets, /health/integrations. Hangfire Dashboard secure.
-- PWA: installable, offline read‑only inbox/announcements/chat history; push notifications for mentions, SLA risk, announcements.
+🔌 API Surface (selected)
 
-5) Frontend deliverables:
-- React routes/pages: login, dashboards, inbox, chat, announcements, search, exports, settings (General/Hotels/Mail Connectors/Routing & SLA/Directory/Security/Notifications/Data Retention/Theme/Templates), health.
-- Shared components: SLA chips, tag selector, thread list, message viewer (sanitized), announcement banners/cards, chat composer, file uploader with ClamAV status, export builder, theme editor, charts.
-- i18n: full `tr` and `en` locales including PDFs.
+Health
+GET /health/app – app & dependencies basic health
+GET /health/queue – jobs/queues (Hangfire)
+GET /health/websockets – SignalR presence & transport
+GET /health/integrations – Graph/EWS/LDAP checks
 
-6) Seeds:
-- 3 hotels (Diamond, Resort, Sarigerme) with brand tokens; 15 departments; 30 users; 9 mailboxes; sample threads/messages; announcements; chat rooms; a cross‑dept approval scenario; export templates.
+Mail / Inbox
+GET /api/v1/inbox/threads (filters: status/tags/date/hotel/dept)
+POST /api/v1/inbox/threads/{id}/assign
+POST /api/v1/inbox/threads/{id}/reply (sanitized HTML, attachments → ClamAV)
+POST /api/v1/inbox/threads/{id}/status (pending/responded/closed)
 
-7) Ops & Scripts:
-- README with Ubuntu 22.04 setup: Nginx reverse proxy for Kestrel, PostgreSQL 16, Redis, ClamAV, Hangfire setup, SignalR scaling, HealthChecks UI, Playwright.
-- deploy/nginx.conf, deploy/portal.service, docker-compose.yml (optional). scripts/setup.sh, migrate-seed.sh, health-check.sh.
+SLA & Routing
+POST /api/v1/sla/policies | GET /api/v1/sla/policies
+POST /api/v1/routing/rules | GET /api/v1/routing/rules
 
-8) Quality gates:
-- xUnit tests for hotel scoping, routing/SLA math, leave/replacement logic, auto‑tags, audit hashing, cross‑dept approval, file scan flows.
-- Playwright E2E for inbox, chat/file send, announcements, PWA install/push.
-- Static analysis and CI workflow (build/test/lint). Serilog sinks sample (console/file/seq).
+Chat & Files
+Hubs: hotel:{id}:dashboard, hotel:{id}:sla, user:{id}:inbox, dept:{id}:chat, dm:{id}, announcements:{scope}
+REST for file upload/download uses AV checks + audit
 
-Deliver a complete monorepo with passing tests and runnable preview.
-```
+Announcements
+POST /api/v1/announcements (scoped schedule/audience)
+POST /api/v1/announcements/{id}/read
 
----
+Search
+GET /api/v1/search?q=...&hotel=...&tag=...&from=...&to=...
 
-## S. Next Steps
+🗺 Roadmap
 
-1. Emergend’e **Generation Prompt**’u yapıştır → repo üret.
-2. Sunucuda PostgreSQL, Redis, ClamAV, Nginx reverse proxy hazırla.
-3. `appsettings` sırlarını doldur (Graph/EWS/LDAP/VAPID).
-4. `scripts/setup.sh` + `migrate-seed.sh` çalıştır; Hangfire ve SignalR’ı başlat.
-5. Sarıgerme üzerinde pilot: AD sync + Graph webhook; ardından Diamond & Resort yayılım.
+✅ Scaffold & Identity/AD sync
 
-*End of Spec v1.0*
+✅ Graph/EWS ingest
+
+✅ Inbox & SLA Engine
+
+✅ Announcements
+
+✅ Chat & File Share (+ cross-dept approval)
+
+✅ Dashboards & Search
+
+✅ Exports & Templates
+
+✅ PWA & Push
+
+✅ Ops & Health
+
+✅ Tests + Seeds + Docs + CI (≥ 70% coverage)
+
+Expansion ideas: advanced manager KPI board, AI-assisted polite replies (EN/TR) with provider adapter, server health widget.
+
+🧩 Troubleshooting
+
+Health endpoints fail → verify DB/Redis/ClamAV sockets and Graph/EWS/LDAP credentials
+
+Uploads blocked → check ClamAV socket path and permissions
+
+SignalR disconnects → confirm Nginx Upgrade/Connection headers and Redis backplane
+
+Coverage < 70% → run unit/integration locally, inspect coverage.cobertura.xml, add tests for SLA/routing/hotel filters
+
+PWA push not received → re-create VAPID keys, check Service Worker registration and permission state
+
+📜 License
+
+© Green Nature Hotels. All rights reserved.
+This repository is intended for internal enterprise use within the Green Nature Hotels group and approved partners. Redistribution or public use requires written permission.
